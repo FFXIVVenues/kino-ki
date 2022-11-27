@@ -6,20 +6,22 @@ from discord    import (
 from discord.enums  import ChannelType, SlashCommandOptionType
 from typing         import TYPE_CHECKING
 
-from errors     import ChannelTypeError
+from utils          import ChannelTypeError
 
 if TYPE_CHECKING:
     from discord    import (
         ApplicationContext,
-        Bot,
         Message
     )
+
+    from classes.bot    import KinoKi
+    from classes.guild  import GuildData
 ######################################################################
 class JobListener(Cog):
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: KinoKi):
 
-        self.bot: Bot = bot
+        self.bot: KinoKi = bot
 
 ######################################################################
     @Cog.listener("on_message")
@@ -55,9 +57,18 @@ class JobListener(Cog):
             await ctx.respond(embed=error, ephemeral=True)
             return
 
+        guild_data = self.get_guild(ctx.guild_id)
+
 
 ######################################################################
-def setup(bot: Bot) -> None:
+    def get_guild(self, guild_id: int) -> GuildData:
+
+        for guild in self.bot.k_guilds:
+            if guild.parent.id == guild_id:
+                return guild
+
+######################################################################
+def setup(bot: KinoKi) -> None:
     """Setup function required by commands.Cog superclass
     to integrate module into the bot. Basically magic.
 

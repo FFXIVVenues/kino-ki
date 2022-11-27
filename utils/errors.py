@@ -1,6 +1,5 @@
 from datetime   import datetime
 from discord    import Colour, Embed
-from typing     import Any, Optional, Type, TypeVar
 
 from assets.images  import BotImages
 ######################################################################

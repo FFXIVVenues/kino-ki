@@ -1,43 +1,42 @@
-from discord    import (
-
+from typing     import (
+    TYPE_CHECKING,
+    Optional,
+    TypeVar
 )
-from typing     import TYPE_CHECKING, Optional, Type, TypeVar
+
+from classes.job_postings   import JobPostings
 
 if TYPE_CHECKING:
-    from discord.channel    import ForumChannel, TextChannel
-    from discord.guild      import Guild
+    from discord.guild  import Guild
+
+    from classes.bot    import KinoKi
 ######################################################################
+
+__all__ = ("GuildData", )
 
 GD = TypeVar("GD", bound="GuildData")
 
 ######################################################################
 class GuildData:
-    """Represents a collection of configurable settings for a guild
-    the bot is a member of.
+    """Represents a collection of various modules of data pertaining
+    to a particular guild.
     """
 
     __slots__ = (
-        "guild",
-        "job_source_channel",
-        "job_post_channel"
+        "parent",
+        "job_postings"
     )
 
 ######################################################################
-    def __init__(self, guild: Guild):
+    def __init__(self, parent: Guild):
 
-        self.guild: Guild = guild
+        self.parent: Guild = parent
 
-        self.job_source_channel: Optional[ForumChannel] = None
-        self.job_post_channel: Optional[TextChannel] = None
-
-######################################################################
-    @classmethod
-    def new(cls: Type[GD], guild: Guild) -> GD:
-
-        return cls(
-            guild=guild
-        )
+        self.job_postings: Optional[JobPostings] = None
 
 ######################################################################
-    def
+    async def load_classes(self, bot: KinoKi) -> None:
+
+        self.job_postings = await JobPostings.load(bot=bot, guild=self)
+
 ######################################################################

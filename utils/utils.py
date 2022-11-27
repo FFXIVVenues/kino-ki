@@ -1,9 +1,7 @@
 from datetime       import datetime
 from discord        import Colour, Embed, EmbedField
 from discord.embeds import EmptyEmbed
-from discord.utils  import MISSING
 from typing         import (
-    TYPE_CHECKING,
     Any,
     List,
     Optional,
@@ -11,7 +9,14 @@ from typing         import (
     Union
 )
 
-import resources.colors as colors
+import colors
+######################################################################
+
+__all__ = (
+    "make_embed",
+    "convert_db_list"
+)
+
 ######################################################################
 def make_embed(
     *,
@@ -118,5 +123,31 @@ def make_embed(
                 embed.add_field(name=f[0], value=f[1], inline=f[2])
 
     return embed
+
+######################################################################
+def convert_db_list(data: str) -> List[str]:
+    """Helper function to convert a list stored as text in the
+    database back into a Python list.
+
+    Parameters:
+    -----------
+        data: :class:`str
+            The database text result to be parsed.
+
+    Returns:
+    --------
+    List[:class:`str`]
+        A list with the string versions of all listed items.
+
+    """
+
+    if not data or data == "{}":
+        return []
+
+    base_list = [i for i in data.lstrip("{").rstrip("}").split(",")]
+
+    return [i.strip("'").strip('"') for i in base_list]
+
+######################################################################
 
 ######################################################################

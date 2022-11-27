@@ -19,6 +19,6 @@ class KinoKi(Bot, ABC):
 
         super().__init__(*args, **kwargs)
 
-        self.k_guilds: List[GuildData]
+        self.k_guilds: List[GuildData] = []
 
 ######################################################################
