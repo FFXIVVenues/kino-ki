@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing     import (
     TYPE_CHECKING,
     Optional,
@@ -24,6 +26,7 @@ class GuildData:
 
     __slots__ = (
         "parent",
+        # "config",
         "job_postings"
     )
 
@@ -32,11 +35,13 @@ class GuildData:
 
         self.parent: Guild = parent
 
+        # self.config: Optional[GuildConfig] = None
         self.job_postings: Optional[JobPostings] = None
 
 ######################################################################
     async def load_classes(self, bot: KinoKi) -> None:
 
         self.job_postings = await JobPostings.load(bot=bot, guild=self)
+        # self.config = await GuildConfiguration.load()
 
 ######################################################################

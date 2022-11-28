@@ -1,21 +1,36 @@
+from __future__ import annotations
+
 from datetime       import datetime
 from discord        import Colour, Embed, EmbedField
 from discord.embeds import EmptyEmbed
 from typing         import (
     Any,
     List,
+    Literal,
     Optional,
     Tuple,
     Union
 )
 
-import colors
+from . import colors
 ######################################################################
 
 __all__ = (
     "make_embed",
-    "convert_db_list"
+    "convert_db_list",
+    "SeparatorField",
+    "NS"
 )
+######################################################################
+
+NS = "`Not Set`"
+
+######################################################################
+class SeparatorField(EmbedField):
+
+    def __init__(self, length: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]):
+
+        super().__init__("=" * (5 * length), "** **", False)
 
 ######################################################################
 def make_embed(

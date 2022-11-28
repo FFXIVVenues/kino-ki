@@ -2,10 +2,12 @@
 
 import os
 
-from discord        import Bot, Game, Intents
+from discord        import Game, Intents
 from discord.ext    import tasks
 from dotenv         import load_dotenv
 from itertools      import cycle
+
+from classes.bot    import KinoKi
 ######################################################################
 # Secret things
 
@@ -13,8 +15,8 @@ load_dotenv()
 
 ######################################################################
 
-bot = Bot(
-    debug_guilds=[303742308874977280, 768923191073701909],
+bot = KinoKi(
+    debug_guilds=[303742308874977280, 221377146638041108],
     intents=Intents.default()
 )
 

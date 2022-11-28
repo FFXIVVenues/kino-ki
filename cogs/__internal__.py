@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from discord    import Cog
 from typing     import TYPE_CHECKING
+
+import utils.database as db
 
 from classes.guild  import GuildData
 
@@ -22,6 +26,8 @@ class Internal(Cog):
             print("====================")
             print(f"Loading: {guild.name} || ID: {guild.id}")
 
+            db.assert_database_entries(guild.id)
+
             guild_data = GuildData(parent=guild)
             await guild_data.load_classes(bot=self.bot)
 
@@ -33,5 +39,20 @@ class Internal(Cog):
         print("All guilds loaded successfully...")
 
         return
+
+######################################################################
+def setup(bot: KinoKi) -> None:
+    """Setup function required by commands.Cog superclass
+    to integrate module into the bot. Basically magic.
+
+    Args:
+        bot: The Bot... duh. Yes, I'm putting this every time.
+
+    Returns:
+        None
+
+    """
+
+    bot.add_cog(Internal(bot))
 
 ######################################################################
