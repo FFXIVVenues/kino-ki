@@ -12,6 +12,7 @@ __all__ = (
     "KinoView",
     "ConfirmCancelView",
     "CloseMessageView",
+    "CloseMessageButton"
 )
 
 ######################################################################
@@ -155,5 +156,26 @@ class CloseMessageView(KinoView):
 
         self.clear_items()
         await self.edit_view_helper()
+
+######################################################################
+class CloseMessageButton(Button):
+
+    def __init__(self):
+
+        super().__init__(
+            style=ButtonStyle.success,
+            label="Close Message",
+            disabled=False,
+            row=4
+        )
+
+    async def callback(self, interaction: Interaction):
+        try:
+            await interaction.message.delete()
+        except:
+            try:
+                await interaction.delete_original_response()
+            except:
+                pass
 
 ######################################################################

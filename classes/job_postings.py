@@ -16,7 +16,7 @@ from typing     import (
     TypeVar
 )
 
-from classes.ui.jobsUI  import ChannelSelectView
+from classes.ui.jobsUI  import *
 from utils              import (
     NS,
     CloseMessageView,
@@ -131,7 +131,7 @@ class JobPostings:
             EmbedField("__Source Channel(s)__", self.list_sources(), True),
             EmbedField("__Post Channel(s)__", self.list_destinations(), True),
             SeparatorField(6),
-            EmbedField("__Posting Stats__", "** **", False),
+            EmbedField("__Posting Stats__", "*(Coming Soon!)*", False),
             SeparatorField(6),
         ]
 
@@ -144,7 +144,7 @@ class JobPostings:
     def source_channel_status(self) -> Embed:
 
         return make_embed(
-            title="Job Posting Source Channel(s)",
+            title="Job Cross-posting Source Channel(s)",
             description=(
                 "==============================\n"
                 f"{self.list_sources()}"
@@ -155,7 +155,7 @@ class JobPostings:
     def post_channel_status(self) -> Embed:
 
         return make_embed(
-            title="Job Crossposting Post Channel(s)",
+            title="Job Cross-posting Post Channel(s)",
             description=(
                 "==============================\n"
                 f"{self.list_destinations()}"
@@ -166,7 +166,9 @@ class JobPostings:
     def list_sources(self) -> str:
 
         if self.source_channels:
-            current_sources = "\n- ".join([c.mention for c in self.source_channels])
+            current_sources = "\n- ".join(
+                [c.mention for c in self.source_channels]
+            )
             return f"- {current_sources}"
 
         return NS
@@ -175,17 +177,19 @@ class JobPostings:
     def list_destinations(self) -> str:
 
         if self.post_channels:
-            post_channels = "\n- ".join(ch.mention for ch in self.post_channels)
+            post_channels = "\n- ".join(
+                [ch.mention for ch in self.post_channels]
+            )
             return f"- {post_channels}"
 
         return NS
 
 ######################################################################
-    async def menu_add_source_channel(self, interaction: Interaction):
+    async def menu_add_source_channel(self, interaction: Interaction) -> None:
 
         prompt = make_embed(
             title="Select New Source Channel",
-            description="Pick a channel to listen in on for job crossposts.",
+            description="Pick a channel to listen in on for job cross-posts.",
             timestamp=False
         )
         view = ChannelSelectView(interaction.user, [ChannelType.forum])
@@ -196,7 +200,50 @@ class JobPostings:
         if not view.complete:
             return
 
+        if view.value in self.source_channels:
+            embed = SourceChannelAlreadyExistsError(view.value.mention)
+            view = None
+            ephemeral = True
 
+        else:
+            self.source_channels.append(view.value)
+            ephemeral = False
+
+            embed = self.source_channel_status()
+            view = CloseMessageView(interaction.user)
+
+        await interaction.followup.send(
+            embed=embed, view=view, ephemeral=ephemeral
+        )
+
+        return
+
+######################################################################
+    async def menu_remove_source_channel(self, interaction: Interaction) -> None:
+
+        prompt = make_embed(
+            title="Select Source Channel to Remove",
+            description="Pick a channel to remove from job cross-post listening.",
+            timestamp=False
+        )
+        view = StringChannelSelectView(interaction.user, self.source_channels)
+
+        await interaction.response.send_message(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
+            return
+
+        for channel in self.source_channels:
+            if channel.id == view.value:
+                self.source_channels.remove(channel)
+                break
+
+        status = self.source_channel_status()
+        view = CloseMessageView(interaction.user)
+
+        await interaction.followup.send(embed=status, view=view)
+        await view.wait()
 
         return
 
@@ -219,7 +266,7 @@ class JobPostings:
                     "There are currently one or more channels already "
                     "configured as the source(s) for job cross-postings. "
                     "\n\n"
-                    "Current Job Posting Source Channels:\n"
+                    "Current Job Cross-posting Source Channels:\n"
                     f"{self.list_sources()}\n\n"
                     
                     "==============================\n"
@@ -262,10 +309,10 @@ class JobPostings:
             return
 
         confirm = make_embed(
-            title="Remove Job Crossposting Source Channel?",
+            title="Remove Job Cross-posting Source Channel?",
             description=(
                 f"Job postings in {channel.mention} will no longer be "
-                "crossposted."
+                "cross-posted."
             )
         )
         view = ConfirmCancelView(ctx.user, close_on_interact=True)
