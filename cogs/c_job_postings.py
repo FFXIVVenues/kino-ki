@@ -144,7 +144,7 @@ class JobListener(Cog):
     ) -> None:
 
         guild_data = self.get_guild(ctx.guild_id)
-        await guild_data.job_postings.slash_remove_source_channel(ctx, channel)
+        await guild_data.job_postings.slash_remove_post_channel(ctx, channel)
 
         return
 
