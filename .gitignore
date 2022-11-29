@@ -207,3 +207,4 @@ fabric.properties
 .idea
 idea/
 
+!/nodemon.json
