@@ -3,11 +3,8 @@ from __future__ import annotations
 from discord    import (
     ApplicationContext,
     ChannelType,
-    ComponentType,
     EmbedField,
-    SelectOption
 )
-from discord.ui import Select
 from typing     import (
     TYPE_CHECKING,
     List,
@@ -30,15 +27,16 @@ from utils              import (
 from utils.errors       import *
 
 if TYPE_CHECKING:
-    from discord    import (
+    from discord        import (
         Embed,
         ForumChannel,
         Interaction,
         TextChannel
     )
+    from discord.abc    import GuildChannel
 
-    from classes.bot import KinoKi
-    from classes.guild import GuildData
+    from classes.bot    import KinoKi
+    from classes.guild  import GuildData
 ######################################################################
 
 __all__ = ("JobPostings", )
@@ -192,7 +190,12 @@ class JobPostings:
             description="Pick a channel to listen in on for job cross-posts.",
             timestamp=False
         )
-        view = ChannelSelectView(interaction.user, [ChannelType.forum])
+
+        channel_list = [
+            channel for channel in interaction.guild.channels
+            if channel.type is ChannelType.forum
+        ]
+        view = ChannelSelectView(interaction.user, channel_list)
 
         await interaction.response.send_message(embed=prompt, view=view)
         await view.wait()
@@ -201,12 +204,12 @@ class JobPostings:
             return
 
         if view.value in self.source_channels:
-            embed = SourceChannelAlreadyExistsError(view.value.mention)
+            embed = ChannelAlreadyExistsError(view.value.mention, "Source")
             view = None
             ephemeral = True
 
         else:
-            self.source_channels.append(view.value)
+            self.update(source_channel=view.value)
             ephemeral = False
 
             embed = self.source_channel_status()
@@ -226,7 +229,7 @@ class JobPostings:
             description="Pick a channel to remove from job cross-post listening.",
             timestamp=False
         )
-        view = StringChannelSelectView(interaction.user, self.source_channels)
+        view = ChannelSelectView(interaction.user, self.source_channels)
 
         await interaction.response.send_message(embed=prompt, view=view)
         await view.wait()
@@ -235,9 +238,76 @@ class JobPostings:
             return
 
         for channel in self.source_channels:
-            if channel.id == view.value:
+            if channel == view.value:
                 self.source_channels.remove(channel)
                 break
+
+        self.update()
+
+        status = self.source_channel_status()
+        view = CloseMessageView(interaction.user)
+
+        await interaction.followup.send(embed=status, view=view)
+        await view.wait()
+
+        return
+
+######################################################################
+    async def menu_add_post_channel(self, interaction: Interaction) -> None:
+
+        prompt = make_embed(
+            title="Select New Post Channel",
+            description=(
+                "Pick a channel to register as a destination for job "
+                "cross-posts."
+            ),
+            timestamp=False
+        )
+
+        channel_list = [
+            c for c in interaction.guild.channels
+            if c.type is ChannelType.text
+        ]
+        view = ChannelSelectView(interaction.user, channel_list)
+
+        await interaction.response.send_message(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
+            return
+
+        self.update(post_channel=view.value)
+
+        status = self.post_channel_status()
+        view = CloseMessageView(interaction.user)
+
+        await interaction.followup.send(embed=status, view=view)
+        await view.wait()
+
+        return
+
+######################################################################
+    async def menu_remove_post_channel(self, interaction: Interaction) -> None:
+
+        prompt = make_embed(
+            title="Select Post Channel to Remove",
+            description="Pick a channel to remove from job cross-post postings.",
+            timestamp=False
+        )
+        view = ChannelSelectView(interaction.user, self.post_channels)
+
+        await interaction.response.send_message(embed=prompt, view=view)
+        await view.wait()
+
+        if not view.complete or view.value is False:
+            return
+
+        for channel in self.post_channels:
+            if channel == view.value:
+                self.post_channels.remove(channel)
+                break
+
+        self.update()
 
         status = self.source_channel_status()
         view = CloseMessageView(interaction.user)
@@ -256,7 +326,7 @@ class JobPostings:
             self.update(source_channel=channel)
         else:
             if channel in self.source_channels:
-                error = SourceChannelAlreadyExistsError(channel.mention)
+                error = ChannelAlreadyExistsError(channel.mention, "Source")
                 await ctx.respond(embed=error, ephemeral=True)
                 return
 
@@ -295,13 +365,8 @@ class JobPostings:
 
 ######################################################################
     async def slash_remove_source_channel(
-        self, ctx: ApplicationContext, channel: ForumChannel
+        self, ctx: ApplicationContext, channel: GuildChannel
     ) -> None:
-
-        if not self.source_channels:
-            error = NoChannelsConfiguredError("Job Source")
-            await ctx.respond(embed=error, ephemeral=True)
-            return
 
         if channel not in self.source_channels:
             error = ChannelNotFound(channel.mention, "Job Source")
@@ -321,9 +386,91 @@ class JobPostings:
         await view.wait()
 
         if view.value is True:
-            self.source_channels.remove(channel)
+            self.source_channels.remove(channel)  # type: ignore
+            self.update()
 
             status = self.source_channel_status()
+            view = CloseMessageView(ctx.user)
+
+            await ctx.respond(embed=status, view=view)
+            await view.wait()
+
+        return
+
+######################################################################
+    async def slash_add_post_channel(
+        self, ctx: ApplicationContext, channel: TextChannel
+    ) -> None:
+
+        if not self.post_channels:
+            self.update(post_channel=channel)
+        else:
+            if channel in self.post_channels:
+                error = ChannelAlreadyExistsError(channel.mention, "Destination")
+                await ctx.respond(embed=error, ephemeral=True)
+                return
+
+            confirm = make_embed(
+                title="Confirm Job Cross-post Destination Channel Add",
+                description=(
+                    "There are currently one or more channels already "
+                    "configured as the destinations(s) for job "
+                    "cross-postings. \n\n"
+                    
+                    "Current Job Cross-posting Destination Channels:\n"
+                    f"{self.list_destinations()}\n\n"
+
+                    "==============================\n"
+                    f"Please confirm you wish you add "
+                    f"{channel.mention} to this list."
+                )
+            )
+
+            view = ConfirmCancelView(ctx.user, close_on_interact=True)
+
+            await ctx.respond(embed=confirm, view=view)
+            await view.wait()
+
+            if not view.complete or view.value is False:
+                return
+
+            self.update(post_channel=channel)
+
+        status = self.post_channel_status()
+        view = CloseMessageView(ctx.user)
+
+        await ctx.respond(embed=status, view=view)
+        await view.wait()
+
+        return
+
+######################################################################
+    async def slash_remove_post_channel(
+        self, ctx: ApplicationContext, channel: GuildChannel
+    ) -> None:
+
+        if channel not in self.post_channels:
+            error = ChannelNotFound(channel.mention, "Job Post Destination")
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        confirm = make_embed(
+            title="Remove Job Cross-posting Destination Channel?",
+            description=(
+                f"Job postings will no longer be cross-posted to "
+                f"{channel.mention} ."
+            )
+        )
+        view = ConfirmCancelView(ctx.user, close_on_interact=True)
+
+        await ctx.respond(embed=confirm, view=view)
+        await view.wait()
+
+        if view.value is True:
+            self.post_channels.remove(channel)  # type: ignore
+            self.update()
+
+            status = self.post_channel_status()
             view = CloseMessageView(ctx.user)
 
             await ctx.respond(embed=status, view=view)

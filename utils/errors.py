@@ -1,12 +1,13 @@
 from datetime   import datetime
 from discord    import Colour, Embed
+from typing     import Literal
 
 from assets.images  import BotImages
 ######################################################################
 
 __all__ = (
     "ChannelTypeError",
-    "SourceChannelAlreadyExistsError",
+    "ChannelAlreadyExistsError",
     "NoChannelsConfiguredError",
     "ChannelNotFound",
 
@@ -79,7 +80,7 @@ class ChannelTypeError(ErrorMessage):
         )
 
 ######################################################################
-class SourceChannelAlreadyExistsError(ErrorMessage):
+class ChannelAlreadyExistsError(ErrorMessage):
     """An error message for when a provided channel is already part
     of the job source channel collection.
 
@@ -89,8 +90,8 @@ class SourceChannelAlreadyExistsError(ErrorMessage):
         "Already Listening to that Channel"
 
     Description:
-        "Unable to add {mention} to the list of job posting source
-        channels."
+        "Unable to add {mention} to the list of job posting
+        {channel_type} channels."
 
     Message:
         "That channel is already a part of the list of job posting
@@ -101,13 +102,15 @@ class SourceChannelAlreadyExistsError(ErrorMessage):
 
     """
 
-    def __init__(self, mention: str):
+    def __init__(
+        self, mention: str, channel_type: Literal["Source", "Destination"]
+    ):
 
         super().__init__(
             title="Already Listening to that Channel",
             description=(
                 f"Unable to add {mention} to the list of job posting "
-                f"source channels."
+                f"{channel_type} channels."
             ),
             message=(
                 "That channel is already a part of the list of job "
