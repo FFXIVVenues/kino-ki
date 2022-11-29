@@ -3,7 +3,8 @@ from discord    import (
     Cog,
     Message,
     Option,
-    SlashCommandGroup
+    SlashCommandGroup,
+    Thread
 )
 from discord.enums  import ChannelType, SlashCommandOptionType
 from typing         import TYPE_CHECKING
@@ -23,22 +24,27 @@ class JobListener(Cog):
         self.bot: "KinoKi" = bot
 
 ######################################################################
-    @Cog.listener("on_message")
-    async def crosspost(self, message: Message):
+    @Cog.listener("on_thread_create")
+    async def crosspost(self, thread: Thread) -> None:
 
-        pass
+        jobs_data = self.get_guild(thread.guild.id).job_postings
+
+        if thread.parent not in jobs_data.source_channels:
+            return
+
+        print(thread.applied_tags)
 
 ######################################################################
 
     postings = SlashCommandGroup(
         name="crossposting",
-        description="Job Crossposting Configuration"
+        description="Job Crossposting Commands"
     )
 
 ######################################################################
     @postings.command(
         name="status",
-        description="Job Crosspost Module Status"
+        description="Job Crosspost Module Status and Configuration"
     )
     async def postings_status(self, ctx: ApplicationContext) -> None:
 
