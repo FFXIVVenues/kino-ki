@@ -10,7 +10,9 @@ __all__ = (
     "ChannelAlreadyExistsError",
     "NoChannelsConfiguredError",
     "ChannelNotFound",
-    "DeathrollInProgress"
+    "DeathrollInProgress",
+    "TagNotFound",
+
 )
 
 ######################################################################
@@ -219,6 +221,45 @@ class DeathrollInProgress(ErrorMessage):
                 f"{player_2}."
             ),
             solution="Finish the current deathroll before starting another."
+        )
+
+######################################################################
+class TagNotFound(ErrorMessage):
+    """An error message informing the user that the forum tag specified
+    wasn't found in an available source channel.
+
+    Overview:
+    ---------
+    Title:
+        "Tag Not Found"
+
+    Description:
+        [None]
+
+    Message:
+        "The forum tag you specified wasn't found in any of the available
+        source channels."
+
+    Solution:
+        "Ensure you've spelled the tag name properly and that the parent
+        forum channel is in the list of available source channels."
+
+    """
+
+    def __init__(self):
+
+        super().__init__(
+            title="Tag Not Found",
+            message=(
+                "The forum tag you specified wasn't found in any of "
+                "the available source channels."
+            ),
+            solution=(
+                "Ensure you've spelled the tag name properly *and* that "
+                "the parent forum channel is in the list of available "
+                "source channels.\n"
+                "(`/crossposting add_source`)>"
+            )
         )
 
 ######################################################################

@@ -10,10 +10,9 @@ from discord.enums  import ChannelType, SlashCommandOptionType
 from typing         import TYPE_CHECKING
 
 from classes.ui.jobsUI  import *
-from utils.errors       import *
+from utils              import *
 
 if TYPE_CHECKING:
-
     from classes.bot import KinoKi
     from classes.guild import GuildData
 ######################################################################
@@ -27,10 +26,17 @@ class JobListener(Cog):
     @Cog.listener("on_thread_create")
     async def crosspost(self, thread: Thread) -> None:
 
-        jobs_data = self.get_guild(thread.guild.id).job_postings
+        # jobs_data = self.get_guild(thread.guild.id).job_postings
+        #
+        # if thread.parent not in jobs_data.source_channels:
+        #     return
+        #
+        # if thread.starting_message is None:
+        #     return
+        #
+        # summary = jobs_data.summarize(thread.starting_message)
 
-        if thread.parent not in jobs_data.source_channels:
-            return
+        pass
 
 ######################################################################
 
@@ -137,18 +143,79 @@ class JobListener(Cog):
         description="Remove a destination channel for crossposting jobs."
     )
     async def postings_source_remove(
-            self,
-            ctx: ApplicationContext,
-            channel: Option(
-                SlashCommandOptionType.channel,
-                name="channel_to_remove",
-                description="Channel to remove as a cross-posting destination.",
-                required=True
-            )
+        self,
+        ctx: ApplicationContext,
+        channel: Option(
+            SlashCommandOptionType.channel,
+            name="channel_to_remove",
+            description="Channel to remove as a cross-posting destination.",
+            required=True
+        )
     ) -> None:
 
         guild_data = self.get_guild(ctx.guild_id)
         await guild_data.job_postings.slash_remove_post_channel(ctx, channel)
+
+        return
+
+######################################################################
+    @postings.command(
+        name="map_role",
+        description="Map a ForumChannel tag to a server role for pinging."
+    )
+    async def postings_map_role(
+        self,
+        ctx: ApplicationContext,
+        tag_string: Option(
+            SlashCommandOptionType.string,
+            name="forum_tag",
+            description="The name of the forum tag to listen for.",
+            max_length=20,
+            required=True
+        ),
+        map_role: Option(
+            SlashCommandOptionType.role,
+            name="role",
+            description="The role to mention when the tag is used.",
+            required=True
+        )
+    ):
+
+        guild_data = self.get_guild(ctx.guild_id)
+        jobs_data = guild_data.job_postings
+
+        found = jobs_data.find_tag(tag_string)
+        if found is None:
+            error = TagNotFound()
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        role_check, tags = jobs_data.validate_role(map_role)
+        if role_check:
+            confirm = make_embed(
+                title="Role Already Mapped",
+                description=jobs_data.role_status(map_role),
+                timestamp=False
+            )
+            view = ConfirmCancelView(ctx.user)
+
+            await ctx.respond(embed=confirm, view=view)
+            await view.wait()
+
+            if not view.complete or view.value is False:
+                return
+
+        jobs_data.map_tag(tag_string, map_role)
+
+        success = make_embed(
+            title="Success!",
+            description=jobs_data.role_status(map_role),
+            timestamp=True
+        )
+        view = CloseMessageView(ctx.user)
+
+        await ctx.respond(embed=success, view=view)
+        await view.wait()
 
         return
 

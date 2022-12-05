@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from discord    import (
+from dataclasses    import dataclass
+from discord        import (
     ApplicationContext,
     ChannelType,
     EmbedField,
+    Message
 )
-from typing     import (
+from typing         import (
     TYPE_CHECKING,
+    Dict,
     List,
     Optional,
+    Tuple,
     Type,
     TypeVar
 )
@@ -31,6 +35,8 @@ if TYPE_CHECKING:
         Embed,
         ForumChannel,
         Interaction,
+        PartialEmoji,
+        Role,
         TextChannel
     )
     from discord.abc    import GuildChannel
@@ -42,6 +48,77 @@ if TYPE_CHECKING:
 __all__ = ("JobPostings", )
 
 JP = TypeVar("JP", bound="JobPostings")
+JT = TypeVar("JT", bound="JobTag")
+
+######################################################################
+@dataclass
+class JobTag:
+    """Represents data involving a Forum Tag / Role Pairing."""
+
+    __slots__ = (
+        "channel",
+        "name",
+        "roles"
+    )
+
+    channel: ForumChannel
+    name: str
+    roles: List[Role]
+
+######################################################################
+    @classmethod
+    def new(
+        cls: Type[JT],
+        *,
+        guild_id: int,
+        channel: ForumChannel,
+        name: str,
+        role: Role
+    ) -> JT:
+
+        c = db.connection.cursor()
+        c.execute(
+            "INSERT INTO job_tags (guild_id, channel_id, name, role_ids) "
+            "VALUES (%s, %s, %s, %s)",
+            (guild_id, channel.id, name, [role.id])
+        )
+
+        db.connection.commit()
+        c.close()
+
+        return cls(
+            channel=channel,
+            name=name,
+            roles=[role]
+        )
+
+######################################################################
+    def remove_role(self, role: Role) -> None:
+
+        for i, r in enumerate(self.roles):
+            if r.id == role.id:
+                self.roles.pop(i)
+
+        self.update()
+
+######################################################################
+    def update(self, *, role: Optional[Role] = None) -> None:
+
+        if role is not None:
+            self.roles.append(role)
+
+        role_ids = [r.id for r in self.roles]
+
+        c = db.connection.cursor()
+        c.execute(
+            "UPDATE job_tags SET role_ids = %s WHERE channel_id = %s",
+            (role_ids, self.channel.id)
+        )
+
+        db.connection.commit()
+        c.close()
+
+        return
 
 ######################################################################
 class JobPostings:
@@ -52,7 +129,8 @@ class JobPostings:
     __slots__ = (
         "guild",
         "source_channels",
-        "post_channels"
+        "post_channels",
+        "tags"
     )
 
 ######################################################################
@@ -60,12 +138,15 @@ class JobPostings:
         self,
         guild: GuildData,
         source_channels: List[ForumChannel],
-        post_channels: List[TextChannel]
+        post_channels: List[TextChannel],
+        tags: List[JobTag]
     ):
         self.guild: GuildData = guild
 
         self.source_channels: List[ForumChannel] = source_channels
         self.post_channels: List[TextChannel] = post_channels
+
+        self.tags: List[JobTag] = tags
 
 ######################################################################
     @classmethod
@@ -80,14 +161,14 @@ class JobPostings:
         # Unless they're deleted, in which case the ID is ignored and will
         # be overwritten in the database on the next self.update() call.
 
-        c = db.connection.cursor()
+        connection = db.connection
+        c = connection.cursor()
         c.execute(
             "SELECT * FROM job_postings WHERE guild_id = %s",
             (guild.parent.id, )
         )
 
         data = c.fetchall()[0]
-        c.close()
 
         source_ids = [int(i) for i in convert_db_list(data[1])]
         post_ids = [int(i) for i in convert_db_list(data[2])]
@@ -116,10 +197,46 @@ class JobPostings:
             else:
                 post_channels.append(post_channel)  # type: ignore
 
+        c.execute("SELECT * FROM job_tags WHERE guild_id = %s", (guild.parent.id, ))
+
+        data = c.fetchall()
+        c.close()
+
+        tags = []
+        roles = []
+
+        for group in data:
+            parent_id = group[1]
+            tag_name = group[2]
+            role_list = group[3]
+
+            parent = None
+            for channel in guild.parent.channels:
+                if channel.id == parent_id:
+                    parent = channel
+                    break
+
+            if parent is None:
+                continue
+
+            for role_id in [int(r) for r in convert_db_list(role_list)]:
+                role = guild.parent.get_role(role_id)
+                if role is None:
+                    continue
+                roles.append(role)
+
+            if not roles:
+                continue
+
+            job_tag = JobTag(parent, tag_name, roles)
+            tags.append(job_tag)
+            roles = []
+
         return cls(
             guild=guild,
             source_channels=source_channels,
-            post_channels=post_channels
+            post_channels=post_channels,
+            tags=tags
         )
 
 ######################################################################
@@ -477,6 +594,76 @@ class JobPostings:
             await view.wait()
 
         return
+
+######################################################################
+    @staticmethod
+    def summarize(message: Message) -> Embed:
+
+        pass
+
+######################################################################
+    def find_tag(self, tag_name: str) -> Optional[ForumChannel]:
+
+        for channel in self.source_channels:
+            for tag in channel.available_tags:
+                if tag.name == tag_name:
+                    return channel
+
+        return None
+
+######################################################################
+    def map_tag(self, tag_name: str, role: Role) -> None:
+
+        for tag in self.tags:
+            if tag.name == tag_name:
+                tag.update(role=role)
+                return
+
+        new_tag = JobTag.new(
+            guild_id=self.guild.parent.id,
+            channel=self.find_tag(tag_name),
+            name=tag_name,
+            role=role
+        )
+        self.tags.append(new_tag)
+
+        return
+
+######################################################################
+    def validate_role(self, role: Role) -> Tuple[bool, Optional[List[JobTag]]]:
+        """Returns a boolean indicating whether the role is currently
+        mapped to any tag.
+        """
+
+        tags = []
+        for tag in self.tags:
+            if role in tag.roles:
+                tags.append(tag)
+
+        if tags:
+            return True, tags
+        else:
+            return False, None
+
+######################################################################
+    def find_tag_emoji(self, tag: JobTag) -> Optional[PartialEmoji]:
+
+        for channel in self.source_channels:
+            if channel.id == tag.channel.id:
+                for t in channel.available_tags:
+                    if t.name == tag.name:
+                        return t.emoji
+
+######################################################################
+    def role_status(self, role: Role) -> str:
+
+        _, tags = self.validate_role(role)
+        status = f"{role.mention} is linked to the following tags:\n\n"
+
+        for tag in tags:
+            status += f"{self.find_tag_emoji(tag)} {tag.name}"
+
+        return status
 
 ######################################################################
     def update(
