@@ -10,7 +10,7 @@ __all__ = (
     "ChannelAlreadyExistsError",
     "NoChannelsConfiguredError",
     "ChannelNotFound",
-
+    "DeathrollInProgress"
 )
 
 ######################################################################
@@ -187,6 +187,38 @@ class ChannelNotFound(ErrorMessage):
                 "Make sure you provide a channel that's in the list "
                 "for that operation."
             )
+        )
+
+######################################################################
+class DeathrollInProgress(ErrorMessage):
+    """An error message informing the user that a deathroll with the
+    given opponent is already in progress.
+
+    Overview:
+    ---------
+    Title:
+        "Deathroll Already in Progress"
+
+    Description:
+        [None]
+
+    Message:
+        "You already have an active deathroll open against {player_2}."
+
+    Solution:
+        "Finish the current deathroll before starting another."
+
+    """
+
+    def __init__(self, player_2: str):
+
+        super().__init__(
+            title="Deathroll Already in Progress",
+            message=(
+                "You already have an active deathroll open against "
+                f"{player_2}."
+            ),
+            solution="Finish the current deathroll before starting another."
         )
 
 ######################################################################

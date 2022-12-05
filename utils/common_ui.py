@@ -73,13 +73,14 @@ class KinoView(View):
         super().stop()
 
         if self._close_on_interact:
-            try:
-                await self._interaction.message.delete()
-            except:
+            if self._interaction is not None:
                 try:
-                    await self._interaction.delete_original_response()
+                    await self._interaction.message.delete()
                 except:
-                    pass
+                    try:
+                        await self._interaction.delete_original_response()
+                    except:
+                        pass
 
 ######################################################################
     async def edit_view_helper(self) -> None:

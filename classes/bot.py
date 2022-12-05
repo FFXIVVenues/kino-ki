@@ -2,7 +2,8 @@ from abc        import ABC
 from discord    import Bot
 from typing     import List
 
-from classes.guild import GuildData
+from classes.deathrolls.player  import DeathrollPlayer
+from classes.guild              import GuildData
 ######################################################################
 class KinoKi(Bot, ABC):
     """Represents the main bot instance being run.
@@ -20,5 +21,6 @@ class KinoKi(Bot, ABC):
         super().__init__(*args, **kwargs)
 
         self.k_guilds: List[GuildData] = []
+        self.deathroll_players: List[DeathrollPlayer] = []
 
 ######################################################################

@@ -32,8 +32,6 @@ class JobListener(Cog):
         if thread.parent not in jobs_data.source_channels:
             return
 
-        print(thread.applied_tags)
-
 ######################################################################
 
     postings = SlashCommandGroup(

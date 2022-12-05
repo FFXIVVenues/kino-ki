@@ -5,7 +5,8 @@ from typing     import TYPE_CHECKING
 
 import utils.database as db
 
-from classes.guild  import GuildData
+from classes.deathrolls.player  import DeathrollPlayer
+from classes.guild              import GuildData
 
 if TYPE_CHECKING:
     from classes.bot    import KinoKi
@@ -36,7 +37,22 @@ class Internal(Cog):
             self.bot.k_guilds.append(guild_data)
 
         print("=================================")
-        print("All guilds loaded successfully...")
+        print("All guild-specific data loaded successfully...")
+        print("=================================")
+        print("Loading deathroll profiles...")
+
+        c = db.connection.cursor()
+        c.execute("SELECT * FROM deathroll_players")
+
+        records = c.fetchall()
+        c.close()
+
+        for i in records:
+            player = await DeathrollPlayer.from_data(self.bot, data=i)
+            self.bot.deathroll_players.append(player)
+
+        print("Deathroll player records loaded successfully...")
+        print("=================================")
 
         return
 
