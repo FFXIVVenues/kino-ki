@@ -175,6 +175,15 @@ class Deathroll:
             return self.player_2
 
 ######################################################################
+    @property
+    def inactive_player(self) -> DeathrollPlayer:
+
+        if self.current_player is P1:
+            return self.player_2
+        else:
+            return self.player_1
+
+######################################################################
     def summary(self) -> Embed:
 
         self.rolls.sort(key=lambda r: r.roll_number)
@@ -183,14 +192,19 @@ class Deathroll:
         if self.current_roll is not None:
             results = "═══════ Rolls: ════════\n"
 
-            for roll in self.rolls:
+            if len(self.rolls) > 10:
+                rolls_group = self.rolls[-10:]
+                results += f"{len(self.rolls) - 10} More Rolls...\n"
+            else:
+                rolls_group = self.rolls
+
+            for roll in rolls_group:
                 if roll.player is P1:
                     player = self.player_1
                 else:
                     player = self.player_2
 
                 skull = BotEmojis.SKULL_CROSSBONES if roll.after_roll == 0 else ""
-
                 results += (
                     f"{skull} {player.name}: {roll.before_roll} -> "
                     f"{roll.after_roll} (-{roll.difference}) {skull}\n"
@@ -202,7 +216,7 @@ class Deathroll:
         if self.current_roll == 0:
             image = BotImages.YOU_DIED
             icon = BotImages.SKULL_AND_CROSSBONES
-            author = f"{self.active_player.name} lost!"
+            author = f"{self.inactive_player.name} lost!"
             color = Colour.dark_red()
         else:
             image = Embed.Empty
@@ -403,7 +417,7 @@ class Deathroll:
 
             await inter.edit(embed=self.summary(), view=view)
 
-        view = RollOverView()
+        view = RollOverView(self.player_1, self.player_2)
         await inter.edit(embed=self.summary(), view=view)
 
         if self.current_player is P1:

@@ -1,6 +1,6 @@
 from datetime   import datetime
 from discord    import Colour, Embed
-from typing     import Literal
+from typing     import Literal, Optional
 
 from assets.images  import BotImages
 ######################################################################
@@ -11,7 +11,9 @@ __all__ = (
     "NoChannelsConfiguredError",
     "ChannelNotFound",
     "DeathrollInProgress",
-    "TagNotFound",
+    "SourceTagNotFound",
+    "TagNotMapped",
+    "RoleNotMapped",
 
 )
 
@@ -28,12 +30,12 @@ class ErrorMessage(Embed):
         title: str,
         message: str,
         solution: str,
-        description: str = ""
+        description: Optional[str] = None
     ):
 
         super().__init__(
             title=title,
-            description=description,
+            description=description if description is not None else Embed.Empty,
             colour=Colour.red()
         )
 
@@ -224,7 +226,7 @@ class DeathrollInProgress(ErrorMessage):
         )
 
 ######################################################################
-class TagNotFound(ErrorMessage):
+class SourceTagNotFound(ErrorMessage):
     """An error message informing the user that the forum tag specified
     wasn't found in an available source channel.
 
@@ -260,6 +262,76 @@ class TagNotFound(ErrorMessage):
                 "source channels.\n"
                 "(`/crossposting add_source`)>"
             )
+        )
+
+######################################################################
+class TagNotMapped(ErrorMessage):
+    """An error message informing the user that the specified forum tag
+    hasn't been assigned a mapping.
+
+    Overview:
+    ---------
+    Title:
+        "Tag Not Mapped"
+
+    Description:
+        [None]
+
+    Message:
+        "The forum tag you specified hasn't been mapped to a role(s) yet."
+
+    Solution:
+        "Ensure you've spelled the tag name properly."
+
+    """
+
+    def __init__(self):
+
+        super().__init__(
+            title="Tag Not Mapped",
+            message=(
+                "The forum tag you specified hasn't been mapped to a "
+                "role(s) yet."
+            ),
+            solution="Ensure you've spelled the tag name properly."
+        )
+
+######################################################################
+class RoleNotMapped(ErrorMessage):
+    """An error message informing the user that the specified guild role
+    hasn't been assigned a tag mapping.
+
+    Overview:
+    ---------
+    Title:
+        "Role Not Mapped"
+
+    Description:
+        [None]
+
+    Message:
+        - "The role you provided hasn't been mapped to a ForumTag."
+        - "The role you provided hasn't been mapped to ForumTag: {tag_name}."
+
+    Solution:
+        "To add a mapping, use `/crosspost map_role`."
+
+    """
+
+    def __init__(self, tag_name: Optional[str] = None):
+
+        if tag_name is not None:
+            message = (
+                "The role you provided hasn't been mapped to ForumTag: "
+                f"{tag_name}."
+            )
+        else:
+            message = "The role you provided hasn't been mapped to a ForumTag."
+
+        super().__init__(
+            title="Role Not Mapped",
+            message=message,
+            solution="To add a mapping, use `/crosspost map_role`."
         )
 
 ######################################################################

@@ -4,9 +4,9 @@ from dataclasses    import dataclass
 from discord        import (
     ApplicationContext,
     ChannelType,
-    EmbedField,
-    Message
+    EmbedField
 )
+from discord.ext.pages  import Page, Paginator
 from typing         import (
     TYPE_CHECKING,
     Dict,
@@ -35,9 +35,11 @@ if TYPE_CHECKING:
         Embed,
         ForumChannel,
         Interaction,
+        Message,
         PartialEmoji,
         Role,
-        TextChannel
+        TextChannel,
+        Thread
     )
     from discord.abc    import GuildChannel
 
@@ -90,6 +92,20 @@ class JobTag:
             channel=channel,
             name=name,
             roles=[role]
+        )
+
+######################################################################
+    def status(self) -> Embed:
+
+        roles = "\n- ".join([role.mention for role in self.roles])
+
+        return make_embed(
+            title="Roles Mapped to Job Tag",
+            description=(
+                f"ForumTag `{self.name}` is liked to the following roles:\n"
+                f"- {roles}"
+            ),
+            timestamp=False
         )
 
 ######################################################################
@@ -154,7 +170,6 @@ class JobPostings:
 
         source_channels: List[ForumChannel] = []
         post_channels: List[TextChannel] = []
-        missing_channels: List[int] = []
 
         # Channel type validation is done when the data is stored, so any
         # channels returned during this load will be of the proper type.
@@ -238,6 +253,21 @@ class JobPostings:
             post_channels=post_channels,
             tags=tags
         )
+
+######################################################################
+    async def view_all_mappings(self, interaction: Interaction) -> None:
+
+        pages = []
+        for tag in self.tags:
+            pages.append(tag.status())
+
+        paginator = Paginator(
+            pages=pages,
+            loop_pages=True
+        )
+        await paginator.respond(interaction)
+
+        return
 
 ######################################################################
     def status_all(self) -> Embed:
@@ -597,12 +627,37 @@ class JobPostings:
 
 ######################################################################
     @staticmethod
-    def summarize(message: Message) -> Embed:
+    def summarize(thread: Thread, message: Message, mention_list: List[str]) -> Embed:
 
-        pass
+        mention_summary = "\n- ".join(mention_list)
+
+        return make_embed(
+            title="New Job Posting!",
+            description=(
+                f"**New job posting in {thread.parent.mention}!**\n\n"
+                
+                "**Thread Name:**\n"
+                f"{thread.mention}\n\n"
+                
+                "**Applicable Position(s):**\n"
+                f"- {mention_summary}\n\n"
+
+                f"[Click Here to See the Post!]({message.jump_url})"
+            ),
+            timestamp=True
+        )
 
 ######################################################################
-    def find_tag(self, tag_name: str) -> Optional[ForumChannel]:
+    def get_tag(self, tag_name: str) -> Optional[JobTag]:
+
+        for tag in self.tags:
+            if tag.name == tag_name:
+                return tag
+
+        return None
+
+######################################################################
+    def tag_parent(self, tag_name: str) -> Optional[ForumChannel]:
 
         for channel in self.source_channels:
             for tag in channel.available_tags:
@@ -621,7 +676,7 @@ class JobPostings:
 
         new_tag = JobTag.new(
             guild_id=self.guild.parent.id,
-            channel=self.find_tag(tag_name),
+            channel=self.tag_parent(tag_name),
             name=tag_name,
             role=role
         )
@@ -661,7 +716,10 @@ class JobPostings:
         status = f"{role.mention} is linked to the following tags:\n\n"
 
         for tag in tags:
-            status += f"{self.find_tag_emoji(tag)} {tag.name}"
+            status += (
+                f"{self.find_tag_emoji(tag)} {tag.name} "
+                f"({tag.channel.mention})\n"
+            )
 
         return status
 

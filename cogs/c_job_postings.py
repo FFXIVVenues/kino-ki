@@ -26,17 +26,41 @@ class JobListener(Cog):
     @Cog.listener("on_thread_create")
     async def crosspost(self, thread: Thread) -> None:
 
-        # jobs_data = self.get_guild(thread.guild.id).job_postings
-        #
-        # if thread.parent not in jobs_data.source_channels:
-        #     return
-        #
-        # if thread.starting_message is None:
-        #     return
-        #
-        # summary = jobs_data.summarize(thread.starting_message)
+        jobs_data = self.get_guild(thread.guild.id).job_postings
 
-        pass
+        if thread.parent not in jobs_data.source_channels:
+            return
+
+        if not thread.applied_tags:
+            return
+
+        role_list = []
+
+        for tag in thread.applied_tags:
+            for role in thread.guild.roles:
+                if tag.name == role.name:
+                    role_list.append(role)
+
+            for job_tag in jobs_data.tags:
+                if job_tag.name == tag.name:
+                    for i in job_tag.roles:
+                        role_list.append(i)
+
+        string_mentions = [r.mention for r in role_list]
+        mention_string = " | ".join(string_mentions)
+        thread_message = await thread.fetch_message(thread.id)
+
+        summary = (
+            f">>> **New Post in {thread.parent.mention}**\n"
+            f"{thread.mention}\n"
+            f"{mention_string}\n"
+            f"{thread.jump_url}"
+        )
+
+        for channel in jobs_data.post_channels:
+            await channel.send(summary)
+
+        return
 
 ######################################################################
 
@@ -179,14 +203,14 @@ class JobListener(Cog):
             description="The role to mention when the tag is used.",
             required=True
         )
-    ):
+    ) -> None:
 
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
 
-        found = jobs_data.find_tag(tag_string)
+        found = jobs_data.tag_parent(tag_string)
         if found is None:
-            error = TagNotFound()
+            error = SourceTagNotFound()
             await ctx.respond(embed=error, ephemeral=True)
             return
 
@@ -218,6 +242,149 @@ class JobListener(Cog):
         await view.wait()
 
         return
+
+######################################################################
+    @postings.command(
+        name="remove_map",
+        description="Remove a ForumChannel tag/role ping relationship."
+    )
+    async def postings_remove_map(
+        self,
+        ctx: ApplicationContext,
+        tag_string: Option(
+            SlashCommandOptionType.string,
+            name="forum_tag",
+            description="The name of the forum tag that is mapped.",
+            max_length=20,
+            required=True
+        ),
+        tagged_role: Option(
+            SlashCommandOptionType.role,
+            name="role",
+            description="The role that is mentioned when the tag is used.",
+            required=True
+        )
+    ) -> None:
+
+        guild_data = self.get_guild(ctx.guild_id)
+        jobs_data = guild_data.job_postings
+
+        tag = jobs_data.get_tag(tag_string)
+        if tag is None:
+            error = TagNotMapped()
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        role_found = tagged_role in tag.roles
+        if not role_found:
+            error = RoleNotMapped(tag_string)
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        tag.remove_role(tagged_role)
+
+        tag_emoji = jobs_data.find_tag_emoji(tag)
+        success = make_embed(
+            title="Success!",
+            description=(
+                f"{tagged_role.mention} will no longer be pinged "
+                f"for crossposts from ForumTag: {tag_emoji} `{tag.name}`."
+            ),
+            timestamp=True
+        )
+        view = CloseMessageView(ctx.user)
+
+        await ctx.respond(embed=success, view=view)
+        await view.wait()
+
+        return
+
+######################################################################
+    @postings.command(
+        name="map_status",
+        description="View all roles mapped to a specific tag or role."
+    )
+    async def postings_map_status(
+        self,
+        ctx: ApplicationContext,
+        tag_string: Option(
+            SlashCommandOptionType.string,
+            name="forum_tag",
+            description="The name of the forum tag to search for.",
+            max_length=20,
+            required=False
+        ),
+        role_object: Option(
+            SlashCommandOptionType.role,
+            name="role",
+            description="The role to search for mappings of.",
+            required=False
+        )
+    ) -> None:
+
+        guild_data = self.get_guild(ctx.guild_id)
+        jobs_data = guild_data.job_postings
+
+        if tag_string is None and role_object is None:
+            await jobs_data.view_all_mappings(ctx.interaction)
+            return
+
+        else:
+            tag = jobs_data.get_tag(tag_string)
+            found, tag_list = jobs_data.validate_role(role_object)
+
+            if tag is None and tag_string is not None:
+                error = TagNotMapped()
+                await ctx.respond(embed=error, ephemeral=True)
+                return
+
+            if not found and role_object is not None:
+                error = RoleNotMapped()
+                await ctx.respond(embed=error, ephemeral=True)
+                return
+
+            if role_object is None:
+                status = tag.status()
+
+            elif tag_string is None:
+                status = make_embed(
+                    title="Role Mapping Status",
+                    description=jobs_data.role_status(role_object),  # type: ignore
+                    timestamp=False
+                )
+
+            else:
+                if tag in tag_list:
+                    title = "Confirmed"
+                    description = (
+                        f"{tag.name} **IS** currently mapped to "
+                        f"{role_object.mention}.\n\n"
+                        
+                        f"When the tag is used in {tag.channel.mention}, "
+                        "that role will be pinged."
+                    )
+
+                else:
+                    title = "Invalid Pair"
+                    description = (
+                        f"{tag.name} **IS NOT** currently mapped to "
+                        f"{role_object.mention}.\n\n"
+
+                        "Use `/crosspost map_role` to create a link."
+                    )
+
+                status = make_embed(
+                    title=title,
+                    description=description,
+                    timestamp=False
+                )
+
+            view = CloseMessageView(ctx.user)
+
+            await ctx.respond(embed=status, view=view)
+            await view.wait()
+
+            return
 
 ######################################################################
     def get_guild(self, guild_id: int) -> "GuildData":

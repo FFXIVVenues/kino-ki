@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses    import dataclass
+from discord        import EmbedField
 from typing         import (
     TYPE_CHECKING,
     Optional,
@@ -10,10 +11,10 @@ from typing         import (
     Union
 )
 
-from utils  import connection
+from utils  import connection, make_embed
 
 if TYPE_CHECKING:
-    from discord    import Bot, Guild, Member, User
+    from discord    import Bot, Embed, Guild, Member, User
 ######################################################################
 
 __all__ = (
@@ -30,13 +31,15 @@ class DeathrollPlayer:
         "user",
         "total_games",
         "wins",
-        "streak"
+        "longest_streak",
+        "current_streak"
     )
 
     user: Union[Member, User]
     total_games: int
     wins: int
-    streak: int
+    longest_streak: int
+    current_streak: int
 
 ######################################################################
     @classmethod
@@ -55,7 +58,8 @@ class DeathrollPlayer:
             user=user,
             total_games=0,
             wins=0,
-            streak=0
+            longest_streak=0,
+            current_streak=0
         )
 
 ######################################################################
@@ -75,7 +79,8 @@ class DeathrollPlayer:
             user=user,
             total_games=data[1],
             wins=data[2],
-            streak=data[3]
+            longest_streak=data[3],
+            current_streak=data[4]
         )
 
 ######################################################################
@@ -85,21 +90,49 @@ class DeathrollPlayer:
         return self.user.display_name
 
 ######################################################################
+    @property
+    def losses(self) -> int:
+
+        return self.total_games - self.wins
+
+######################################################################
+    def stats(self) -> Embed:
+
+        fields = [
+            EmbedField("__Total Games__", f"`{self.total_games}`", True),
+            EmbedField("__Wins__", f"`{self.wins}`", True),
+            EmbedField("__Losses__", f"`{self.losses}`", True),
+            EmbedField("__Current Win Streak__", f"`{self.current_streak} games`", True),
+            EmbedField("__Longest Win Streak__", f"`{self.longest_streak} games`", True)
+        ]
+
+        return make_embed(
+            title=f"Deathroll Stats for {self.user.name}",
+            fields=fields,
+            timestamp=True
+        )
+
+######################################################################
     def update(self, won_game: bool = False) -> None:
 
         self.total_games += 1
 
         if won_game is True:
             self.wins += 1
-            self.streak += 1
+            self.current_streak += 1
+            if self.current_streak > self.longest_streak:
+                self.longest_streak = self.current_streak
         else:
-            self.streak = 0
+            self.current_streak = 0
 
         c = connection.cursor()
         c.execute(
             "UPDATE deathroll_players SET games = %s, wins = %s, "
-            "streak = %s WHERE user_id = %s",
-            (self.total_games, self.wins, self.streak, self.user.id)
+            "longest_streak = %s, current_streak = %s WHERE user_id = %s",
+            (
+                self.total_games, self.wins, self.longest_streak,
+                self.current_streak, self.user.id
+            )
         )
 
         connection.commit()

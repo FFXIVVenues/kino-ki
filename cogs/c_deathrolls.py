@@ -112,7 +112,7 @@ class Deathrolls(Cog):
         player_2.user = member_2
 
         guild_data.deathrolls.sort(key=lambda r: r.roll_id, reverse=True)
-        roll_id = guild_data.deathrolls[0].id + 1
+        roll_id = guild_data.deathrolls[0].id + 1 if guild_data.deathrolls else 1
 
         deathroll = Deathroll(
             roll_id=roll_id,

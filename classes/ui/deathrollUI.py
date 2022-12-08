@@ -177,10 +177,20 @@ class CoinTossView(KinoView):
         return False
 
 ######################################################################
-class RollOverView(View):
+class RollOverView(KinoView):
 
-    def __init__(self):
-        super().__init__(timeout=1.0)
+    def __init__(
+        self,
+        owner: DeathrollPlayer,
+        player_2: DeathrollPlayer,
+    ):
+        super().__init__(owner.user, timeout=60.0)
+
+        self.owner: DeathrollPlayer = owner
+        self.player_2: DeathrollPlayer = player_2
+
+        self.p1_sent: bool = False
+        self.p2_sent: bool = False
 
     @button(
         style=ButtonStyle.secondary,
@@ -191,5 +201,41 @@ class RollOverView(View):
     async def nothing(self, btn: Button, interaction: Interaction):
 
         pass
+
+    @button(
+        style=ButtonStyle.primary,
+        label="DM Stats",
+        disabled=False,
+        emoji=BotEmojis.ENVELOPE,
+        row=0
+    )
+    async def stats(self, btn: Button, interaction: Interaction):
+
+        if interaction.user == self.owner.user:
+            stats = self.owner.stats()
+            self.p1_sent = True
+        else:
+            stats = self.player_2.stats()
+            self.p2_sent = True
+
+        await interaction.user.send(embed=stats)
+
+        if self.p1_sent and self.p2_sent:
+            await self.stop()
+
+######################################################################
+    async def interaction_check(self, interaction: Interaction) -> bool:
+
+        if interaction.user.id == self.owner.user.id:
+            if not self.p1_sent:
+                return True
+
+        elif interaction.user.id == self.player_2.user.id:
+            if not self.p2_sent:
+                return True
+
+        return False
+
+######################################################################
 
 ######################################################################
