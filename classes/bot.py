@@ -1,26 +1,34 @@
+from __future__ import annotations
+
 from abc        import ABC
 from discord    import Bot
-from typing     import List
+from typing     import TYPE_CHECKING, List
 
-from classes.deathrolls.player  import DeathrollPlayer
-from classes.guild              import GuildData
-######################################################################
+if TYPE_CHECKING:
+    from guild  import GuildData
+####################################################################################################
+
+__all__ = ("KinoKi", )
+
+####################################################################################################
 class KinoKi(Bot, ABC):
     """Represents the main bot instance being run.
 
-    Attributes:
-    -----------
-    k_guilds: :class:`list`
-        A list of custom guild objects that hold data pertaining
-        to bot features.
+        Attributes:
+        -----------
+        k_guilds: List[:class:`GuildData`]
+            A list of custom guild objects that hold data pertaining
+            to bot features.
 
     """
 
-    def __init__(self, *args, **kwargs):
+    __slots__ = ("k_guilds", )
 
+####################################################################################################
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.k_guilds: List[GuildData] = []
-        self.deathroll_players: List[DeathrollPlayer] = []
 
-######################################################################
+####################################################################################################
