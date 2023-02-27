@@ -10,6 +10,7 @@ from discord        import (
     ForumChannel,
     Option,
     Permissions,
+    Role,
     SlashCommandGroup,
     SlashCommandOptionType,
     Thread
@@ -97,6 +98,25 @@ class Listeners(Cog):
                     if t.parent.id == tag.id:
                         guild.job_postings.tags.pop(i)
                         break
+
+####################################################################################################
+    @Cog.listener("on_guild_role_delete")
+    async def role_delete(self, role: Role):
+
+        guild = self.get_guild(role.guild.id)
+
+        found, tags = guild.job_postings.check_for_role_mapping(role)
+        print(found)
+        print(tags)
+        if not found:
+            return
+
+        for tag in tags:
+            tag.remove_role(role)
+
+        guild.job_postings.clean_up_tags()
+
+        return
 
 ####################################################################################################
     def get_guild(self, guild_id: int) -> GuildData:

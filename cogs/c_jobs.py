@@ -131,8 +131,8 @@ class JobListeners(Cog):
 
 ####################################################################################################
     @postings.command(
-        name="remove_channel",
-        description="Remove a post or destination channel for crossposting jobs."
+        name="remove_source",
+        description="Remove a source channel for job crosspostings."
     )
     async def postings_source_remove(
         self,
@@ -140,13 +140,44 @@ class JobListeners(Cog):
         channel: Option(
             SlashCommandOptionType.channel,
             name="channel_to_remove",
-            description="Channel to remove as a cross-posting resource.",
+            description="Forum channel to remove as a cross-posting source.",
             required=True
         )
     ) -> None:
 
+        if channel.type is not ChannelType.forum:
+            error = ChannelTypeError("Forum Channel")
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
         guild_data = self.get_guild(ctx.guild_id)
-        await guild_data.job_postings.remove_channel(ctx.interaction, channel)
+        await guild_data.job_postings.remove_source(ctx.interaction, channel)
+
+        return
+
+####################################################################################################
+    @postings.command(
+        name="remove_destination",
+        description="Remove a post channel for job crosspostings."
+    )
+    async def postings_source_remove(
+        self,
+        ctx: ApplicationContext,
+        channel: Option(
+            SlashCommandOptionType.channel,
+            name="channel_to_remove",
+            description="Text channel to remove as a cross-posting destination.",
+            required=True
+        )
+    ) -> None:
+
+        if channel.type is not ChannelType.text:
+            error = ChannelTypeError("Text Channel")
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        guild_data = self.get_guild(ctx.guild_id)
+        await guild_data.job_postings.remove_destination(ctx.interaction, channel)
 
         return
 
@@ -198,6 +229,47 @@ class JobListeners(Cog):
             await ctx.respond(embed=confirm, view=view)
             await view.wait()
 
+            return
+
+####################################################################################################
+    @postings.command(
+        name="remove_map",
+        description="Remove a role/tag mapping for job crosspostings."
+    )
+    async def jobs_remove_map(
+        self,
+        ctx: ApplicationContext,
+        tag_string: Option(
+            SlashCommandOptionType.string,
+            name="forum_tag",
+            description="The name of the forum tag being listened for.",
+            max_length=20,
+            required=True
+        ),
+        map_role: Option(
+            SlashCommandOptionType.role,
+            name="role",
+            description="The role mentioned when the corresponding tag is used.",
+            required=True
+        )
+    ) -> None:
+
+        guild_data = self.get_guild(ctx.guild_id)
+        jobs_data = guild_data.job_postings
+
+        parent_channel = jobs_data.get_tag_parent_channel(tag_string)
+        parent_tag = jobs_data.get_parent_tag(tag_string)
+        if parent_channel is None or parent_tag is None:
+            error = SourceTagNotFound()
+            await ctx.respond(embed=error, ephemeral=True)
+            return
+
+        map_check, _ = jobs_data.check_for_role_mapping(map_role, parent_tag)
+
+        # If map_check is false, it means the pair wasn't found.
+        if not map_check:
+            error = MappingNotFound()
+            await ctx.respond(embed=error, ephemeral=True)
             return
 
         # Otherwise we ask if the user wants to remove the pairing.

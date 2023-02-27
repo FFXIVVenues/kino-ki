@@ -111,10 +111,7 @@ class JobTag:
             if r.id == role.id:
                 self.roles.pop(i)
 
-        if len(self.roles) == 0:
-            self.delete()
-        else:
-            self.update()
+        self.update()
 
 ####################################################################################################
     def update(self, *, role: Optional[Role] = None) -> None:
@@ -358,9 +355,21 @@ class JobPostings:
         return
 
 ####################################################################################################
-    async def remove_channel(
-        self, interaction: Interaction, channel: TextChannel
-    ) -> None:
+    async def remove_source(self, interaction: Interaction, channel: ForumChannel) -> None:
+
+        if channel in self.source_channels:
+            self.update(remove_channel=channel)
+
+        status = self.source_channel_status()
+        view = CloseMessageView(interaction.user)
+
+        await interaction.response.send_message(embed=status, view=view)
+        await view.wait()
+
+        return
+
+####################################################################################################
+    async def remove_destination(self, interaction: Interaction, channel: TextChannel) -> None:
 
         if channel in self.post_channels:
             self.update(remove_channel=channel)
@@ -422,14 +431,16 @@ class JobPostings:
         """Returns a boolean indicating whether the provided role is currently mapped
         to the given tag as well as a list of tags the role is currently mapped to.
         """
+
         found = False
         tags = []
 
         for tag in self.tags:
             if role in tag.roles:
+                found = True
                 tags.append(tag)
-                if query_tag is not None and tag.parent.id == query_tag.id:
-                    found = True
+                # if query_tag is not None and tag.parent.id == query_tag.id:
+                #     found = True
 
         return found, tags
 
@@ -516,10 +527,7 @@ class JobPostings:
             return
 
         tag.remove_role(parent_role)
-
-        for i, tag in enumerate(self.tags):
-            if not tag.roles:
-                self.tags.pop(i)
+        self.clean_up_tags()
 
         success = make_embed(
             color=Colour.green(),
@@ -564,6 +572,29 @@ class JobPostings:
         await paginator.respond(interaction)
 
         return
+
+####################################################################################################
+    def role_removed(self, role: Role) -> None:
+
+        for tag in self.tags:
+            for i, r in enumerate(tag.roles):
+                if r.id == role.id:
+                    tag.roles.pop(i)
+
+                    if not tag.roles:
+                        tag.delete()
+
+        self.clean_up_tags()
+
+####################################################################################################
+    def clean_up_tags(self) -> None:
+
+        for i, tag in enumerate(self.tags):
+            print(tag.parent.name)
+            print(tag.roles)
+            if not tag.roles:
+                tag.delete()
+                self.tags.pop(i)
 
 ####################################################################################################
     def update_stats(self, role: Role) -> None:

@@ -7,7 +7,8 @@ from assets     import BotImages
 
 __all__ = (
     "ChannelTypeError",
-    "SourceTagNotFound"
+    "SourceTagNotFound",
+    "MappingNotFound"
 )
 
 ####################################################################################################
@@ -110,6 +111,34 @@ class SourceTagNotFound(ErrorMessage):
                 "source channels.\n"
                 "</crossposting add_source:1073421413924483092>"
             )
+        )
+
+####################################################################################################
+class MappingNotFound(ErrorMessage):
+    """An error message informing the user that the forum tag / role mapping specified wasn't found.
+
+    Overview:
+    ---------
+    Title:
+        "Mapping Not Found"
+
+    Description:
+        [None]
+
+    Message:
+        "The forum tag / role map combination you specified hasn't been created yet."
+
+    Solution:
+        "Use </ jobs map_role:1073421413924483092> to create a new mapping."
+
+    """
+
+    def __init__(self):
+
+        super().__init__(
+            title="Mapping Not Found",
+            message="The forum tag/role map combination you specified hasn't been created yet.",
+            solution="Use </jobs map_role:1073421413924483092> to create a new mapping."
         )
 
 ####################################################################################################
