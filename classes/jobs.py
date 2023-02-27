@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses    import dataclass
+from discord.abc    import GuildChannel
 from discord        import (
+    ChannelType,
     Colour,
     Embed,
     EmbedField,
@@ -263,6 +265,11 @@ class JobPostings:
             tags=tags,
             stats=job_stats
         )
+
+####################################################################################################
+    def all_channels(self) -> List[GuildChannel]:
+
+        return self.post_channels + self.post_channels
 
 ####################################################################################################
     def status_all(self) -> Embed:
@@ -580,6 +587,28 @@ class JobPostings:
         c.close()
 
         return
+
+####################################################################################################
+    def yeet_channel(self, channel: ForumChannel) -> None:
+
+        if channel.type is ChannelType.text:
+            for i, ch in enumerate(self.post_channels):
+                if ch.id == channel.id:
+                    self.post_channels.pop(i)
+                    break
+
+        elif channel.type is ChannelType.forum:
+            for i, ch in enumerate(self.source_channels):
+                if ch.id == channel.id:
+                    self.source_channels.pop(i)
+                    break
+
+            for i, tag in enumerate(self.tags):
+                if tag.parent.id == channel.id:
+                    tag.delete()
+                    self.tags.pop(i)
+
+        self.update()
 
 ####################################################################################################
     def update(

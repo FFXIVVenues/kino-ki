@@ -27,45 +27,6 @@ class JobListeners(Cog):
         self.bot: "KinoKi" = bot
 
 ####################################################################################################
-    @Cog.listener("on_thread_create")
-    async def crosspost(self, thread: Thread) -> None:
-
-        jobs_data = self.get_guild(thread.guild.id).job_postings
-
-        if thread.parent not in jobs_data.source_channels:
-            return
-
-        if not thread.applied_tags:
-            return
-
-        role_list = []
-
-        for tag in thread.applied_tags:
-            for role in thread.guild.roles:
-                if tag.name.lower() == role.name.lower():
-                    role_list.append(role)
-                    jobs_data.update_stats(role)
-
-            for job_tag in jobs_data.tags:
-                if job_tag.parent.name.lower() == tag.name.lower():
-                    for i in job_tag.roles:
-                        role_list.append(i)
-
-        string_mentions = [r.mention for r in role_list]
-        mention_string = " | ".join(string_mentions)
-        thread_message = await thread.fetch_message(thread.id)
-
-        summary = (
-            f">>> **New Post in {thread.parent.mention}**\n"
-            f"{thread.mention}\n"
-            f"{mention_string}\n"
-            f"{thread.jump_url}"
-        )
-
-        for channel in jobs_data.post_channels:
-            await channel.send(summary)
-
-        return
 
 ####################################################################################################
 
@@ -107,10 +68,6 @@ class JobListeners(Cog):
     )
     async def postings_status(self, ctx: ApplicationContext) -> None:
 
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
-
         guild_data = self.get_guild(ctx.guild_id)
         status = guild_data.job_postings.status_all()
 
@@ -133,10 +90,6 @@ class JobListeners(Cog):
             required=True
         )
     ) -> None:
-
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
 
         if not channel.type == ChannelType.forum:
             error = ChannelTypeError("Forum Channel")
@@ -166,10 +119,6 @@ class JobListeners(Cog):
         )
     ) -> None:
 
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
-
         if not channel.type == ChannelType.text:
             error = ChannelTypeError("Text Channel")
             await ctx.respond(embed=error, ephemeral=True)
@@ -195,10 +144,6 @@ class JobListeners(Cog):
             required=True
         )
     ) -> None:
-
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
 
         guild_data = self.get_guild(ctx.guild_id)
         await guild_data.job_postings.remove_channel(ctx.interaction, channel)
@@ -227,10 +172,6 @@ class JobListeners(Cog):
             required=True
         )
     ) -> None:
-
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
 
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
@@ -271,10 +212,6 @@ class JobListeners(Cog):
         description="View all roles mapped to a specific tag or role."
     )
     async def postings_map_status(self, ctx: ApplicationContext) -> None:
-
-        if not ctx.user.guild_permissions.manage_channels:
-            await ctx.respond("🖕🏻")
-            return
 
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
