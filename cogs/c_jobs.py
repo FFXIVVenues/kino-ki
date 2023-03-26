@@ -96,8 +96,11 @@ class JobListeners(Cog):
             await ctx.respond(embed=error, ephemeral=True)
             return
 
+        # Since the channel was just mentioned, it shouldn't be None.
+        channel = await self.bot.fetch_channel(channel.id)
+
         guild_data = self.get_guild(ctx.guild_id)
-        await guild_data.job_postings.add_source_channel(ctx.interaction, channel)
+        await guild_data.job_postings.add_source_channel(ctx.interaction, channel)  # type: ignore
 
         return
 
@@ -207,29 +210,26 @@ class JobListeners(Cog):
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
 
-        parent_channel = jobs_data.get_tag_parent_channel(tag_string)
-        parent_tag = jobs_data.get_parent_tag(tag_string)
-        if parent_channel is None or parent_tag is None:
+        parent_channels = jobs_data.get_tag_parent_channels(tag_string)
+        parent_tags = jobs_data.get_parent_tags(tag_string)
+        if not parent_channels or not parent_tags or len(parent_tags) != len(parent_channels):
             error = SourceTagNotFound()
             await ctx.respond(embed=error, ephemeral=True)
             return
 
-        map_check, _ = jobs_data.check_for_role_mapping(map_role, parent_tag)
+        jobs_data.map_tags(parent_tags, map_role)
 
-        # If map_check is false, it means the pair wasn't found and can be created
-        if not map_check:
-            jobs_data.map_tag(parent_tag, map_role)
-            confirm = make_embed(
-                title="Success!",
-                description=jobs_data.role_status(map_role),
-                timestamp=True
-            )
-            view = CloseMessageView(ctx.user)
+        confirm = make_embed(
+            title="Success!",
+            description=jobs_data.role_status(map_role),
+            timestamp=True
+        )
+        view = CloseMessageView(ctx.user)
 
-            await ctx.respond(embed=confirm, view=view)
-            await view.wait()
+        await ctx.respond(embed=confirm, view=view)
+        await view.wait()
 
-            return
+        return
 
 ####################################################################################################
     @postings.command(
@@ -257,24 +257,28 @@ class JobListeners(Cog):
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
 
-        parent_channel = jobs_data.get_tag_parent_channel(tag_string)
-        parent_tag = jobs_data.get_parent_tag(tag_string)
-        if parent_channel is None or parent_tag is None:
+        parent_channels = jobs_data.get_tag_parent_channels(tag_string)
+        parent_tags = jobs_data.get_parent_tags(tag_string)
+        if not parent_channels or not parent_tags or len(parent_tags) != len(parent_channels):
             error = SourceTagNotFound()
             await ctx.respond(embed=error, ephemeral=True)
             return
 
-        map_check, _ = jobs_data.check_for_role_mapping(map_role, parent_tag)
+        flag = False
+        for parent_tag in parent_tags:
+            map_check, _ = jobs_data.check_for_role_mapping(map_role, parent_tag)
+            if map_check:
+                flag = True
 
         # If map_check is false, it means the pair wasn't found.
-        if not map_check:
+        if not flag:
             error = MappingNotFound()
             await ctx.respond(embed=error, ephemeral=True)
             return
 
         # Otherwise we ask if the user wants to remove the pairing.
         # (If map_check is true, then there should always be data in tags)
-        await jobs_data.remove_mapping(ctx.interaction, parent_tag, map_role)
+        await jobs_data.remove_mapping(ctx.interaction, parent_tags, map_role)
 
         return
 
@@ -288,7 +292,8 @@ class JobListeners(Cog):
         guild_data = self.get_guild(ctx.guild_id)
         jobs_data = guild_data.job_postings
 
-        await jobs_data.view_all_mappings(ctx.interaction)
+        await ctx.respond(embed=jobs_data.all_mappings())
+
         return
 
 ####################################################################################################

@@ -24,8 +24,9 @@ from typing         import (
     Union
 )
 
-from ui         import *
-from utilities  import *
+from assets.emojis  import BotEmojis
+from ui             import *
+from utilities      import *
 
 if TYPE_CHECKING:
     from bot    import KinoKi
@@ -405,24 +406,26 @@ class JobPostings:
         return "`Not Set`"
 
 ####################################################################################################
-    def get_tag_parent_channel(self, tag_name: str) -> Optional[ForumChannel]:
+    def get_tag_parent_channels(self, tag_name: str) -> List[ForumChannel]:
 
+        channels = []
         for channel in self.source_channels:
             for tag in channel.available_tags:
                 if tag.name.lower() == tag_name.lower():
-                    return channel
+                    channels.append(channel)
 
-        return None
+        return channels
 
 ####################################################################################################
-    def get_parent_tag(self, tag_string: str) -> Optional[ForumTag]:
+    def get_parent_tags(self, tag_string: str) -> List[ForumTag]:
 
+        tags = []
         for channel in self.source_channels:
             for tag in channel.available_tags:
                 if tag.name.lower() == tag_string.lower():
-                    return tag
+                    tags.append(tag)
 
-        return None
+        return tags
 
 ####################################################################################################
     def check_for_role_mapping(
@@ -475,20 +478,29 @@ class JobPostings:
         )
 
 ####################################################################################################
-    def map_tag(self, tag: ForumTag, role: Role) -> None:
+    def map_tags(self, tags: List[ForumTag], role: Role) -> None:
 
-        for t in self.tags:
-            if t.parent.id == tag.id:
-                t.update(role=role)
-                return
+        for tag in tags:
+            map_check, _ = self.check_for_role_mapping(role, tag)
 
-        new_tag = JobTag.new(
-            guild_id=self.guild.parent.id,
-            channel=self.get_tag_parent_channel(tag.name),
-            parent=tag,
-            role=role
-        )
-        self.tags.append(new_tag)
+            # If map_check is `true`, it means the pair was found and doesn't need to be created.
+            if map_check:
+                continue
+
+            flag = False
+            for t in self.tags:
+                if t.parent.id == tag.id:
+                    flag = True
+                    t.update(role=role)
+
+            if not flag:
+                new_tag = JobTag.new(
+                    guild_id=self.guild.parent.id,
+                    channel=self.get_tag_parent_channels(tag.name)[0],
+                    parent=tag,
+                    role=role
+                )
+                self.tags.append(new_tag)
 
         return
 
@@ -496,22 +508,22 @@ class JobPostings:
     async def remove_mapping(
         self,
         interaction: Interaction,
-        parent_tag: ForumTag,
+        parent_tags: List[ForumTag],
         parent_role: Role
     ) -> None:
 
-        # if we're at this point, the tag was already successfully found, therefore,
+        # if we're at this point, tags were already successfully found, therefore,
         # we won't get a null reference error here.
-        for tag in self.tags:
-            if tag.parent.id == parent_tag.id:
-                parent_channel = tag.channel
-                break
+        for parent in parent_tags:
+            for tag in self.tags:
+                if tag.parent.id == parent.id:
+                    parent_channel = tag.channel
 
         confirm = make_embed(
             color=Colour.red(),
             title="Mapping Already Present",
             description=(
-                f"The forum tag {parent_tag.name} (in channel {parent_channel.mention})\n"
+                f"The forum tag {parent.name} (in channel {parent_channel.mention})\n"
                 f"is already linked to the role {parent_role.mention}.\n\n"
 
                 "**Do you want to __remove__ that mapping?**"
@@ -533,7 +545,7 @@ class JobPostings:
             color=Colour.green(),
             title="Success!",
             description=(
-                f"The forum tag {parent_tag.name} (in channel {parent_channel.mention})\n"
+                f"The forum tag {tag.parent.name} (in channel {parent_channel.mention})\n"
                 f"is no longer linked to the role {parent_role.mention}.\n\n"
             ),
             timestamp=True
@@ -544,34 +556,48 @@ class JobPostings:
         return
 
 ####################################################################################################
-    async def view_all_mappings(self, interaction: Interaction) -> None:
+    def all_mappings(self) -> Embed:
 
-        pages = []
+
+        if not self.tags:
+            return make_embed(
+                color=Colour.red(),
+                title="No Tags Mapped Yet",
+                description=(
+                    "You haven't mapped any tag/role combinations yet.\n\n"
+                    
+                    "Click here ➡ </jobs map_role:1073421413924483092> ⬅ to do that now!\n\n"
+                    
+                    "*(Remember, spelling counts~!)*"
+                ),
+                timestamp=False
+            )
+
+        tag_text = emoji_text = role_text = ""
+
         for tag in self.tags:
-            pages.append(tag.status())
+            emoji = tag.parent.emoji if str(tag.parent.emoji) != "_" else ""
+            tag_text += f"{emoji} {tag.parent.name}\n"
+            emoji_text += f"{BotEmojis.RightArrow}\n"
+            role_text += f"{tag.roles[0].mention}\n"
 
-        if not pages:
-            pages = [
-                make_embed(
-                    color=Colour.red(),
-                    title="No Tags Mapped Yet",
-                    description=(
-                        "You haven't mapped any tag/role combinations yet.\n\n"
-                        
-                        "Click here ➡ </jobs map_role:1073421413924483092> ⬅ to do that now!\n\n"
-                        
-                        "*(Remember, spelling counts~!)*"
-                    )
-                )
-            ]
+            if len(tag.roles) > 1:
+                for role in tag.roles[1:]:
+                    tag_text += "\n"
+                    emoji_text += "\n"
+                    role_text += f"{role.mention}\n"
 
-        paginator = Paginator(
-            pages=pages,
-            loop_pages=True
+        fields = [
+            EmbedField("__Tag__", tag_text, True),
+            EmbedField("** **", emoji_text, True),
+            EmbedField("__Role(s)__", role_text, True)
+        ]
+
+        return make_embed(
+            title="Tag/Role Mapping List",
+            fields=fields,
+            timestamp=False
         )
-        await paginator.respond(interaction)
-
-        return
 
 ####################################################################################################
     def role_removed(self, role: Role) -> None:

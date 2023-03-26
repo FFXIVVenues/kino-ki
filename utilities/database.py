@@ -7,7 +7,8 @@ __all__ = ("db_connection", "assert_database_entries")
 ####################################################################################################
 # Environment variables
 
-DATABASE = os.environ.get("DATABASE_URL", None)
+# DATABASE = os.environ.get("DATABASE_URL", None)
+DATABASE = "postgres://jxnlptguidmjbk:2807ce5f05d595c4f06d27340fd8dad9de74fe1099f427ec1336293082f60832@ec2-44-208-88-195.compute-1.amazonaws.com:5432/d7jh5kaam0plun"
 ####################################################################################################
 # Open database connection
 # I prefer to create a cursor at the time of data query, so just
