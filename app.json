@@ -14,10 +14,6 @@
   "website": "https://ffxivvenues.com.com/",
   "repository": "https://github.com/FFXIVVenues/kino-ki/",
   "logo": "https://raw.githubusercontent.com/FFXIVVenues/ffxiv-venues-web/master/res/logo-administrators.png",
-  "success_url": "/welcome",
-  "scripts": {
-    "postdeploy": "bundle exec rake bootstrap"
-  },
   "env": {
     "DISCORD_TOKEN": {
       "description": "The Discord Bot Token from the Discord Developer Portal.",
@@ -28,7 +24,7 @@
     "worker": {
       "quantity": 1,
       "size": "basic",
-      "command": "python main.py"
+      "command": "pipenv run python main.py"
     }
   },
   "image": "heroku/buildpack-python",
