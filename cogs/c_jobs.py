@@ -35,31 +35,31 @@ class JobListeners(Cog):
         description="Job Crossposting Commands"
     )
 
-    sumi = SlashCommandGroup(
-        name="hey_sumi",
-        description="Click me..."
-    )
+    # sumi = SlashCommandGroup(
+    #     name="hey_sumi",
+    #     description="Click me..."
+    # )
 
 ####################################################################################################
-    @sumi.command(
-        name="nou",
-        description="Click me..."
-    )
-    async def nou(self, ctx):
-
-        embed = make_embed(
-            title="NO U",
-            description="nounounounounounounounounounounounounounounounounounounounounou",
-            author_name="No... U",
-            author_icon="https://cdn.discordapp.com/attachments/957656105092272208/1075103689712340992/nou-no.gif",
-            footer_text="Nuh uh. YOUYOUYOU!",
-            footer_icon="https://cdn.discordapp.com/attachments/957656105092272208/1075104030721839196/images_1.png",
-            thumbnail_url="https://cdn.discordapp.com/attachments/957656105092272208/1075103690060476416/no-u-turn.jpg",
-            image_url="https://cdn.discordapp.com/attachments/957656105092272208/1075104193641205821/no-u-reverse-card.gif",
-            timestamp=False
-        )
-
-        await ctx.respond(embed=embed)
+    # @sumi.command(
+    #     name="nou",
+    #     description="Click me..."
+    # )
+    # async def nou(self, ctx):
+    #
+    #     embed = make_embed(
+    #         title="NO U",
+    #         description="nounounounounounounounounounounounounounounounounounounounounou",
+    #         author_name="No... U",
+    #         author_icon="https://cdn.discordapp.com/attachments/957656105092272208/1075103689712340992/nou-no.gif",
+    #         footer_text="Nuh uh. YOUYOUYOU!",
+    #         footer_icon="https://cdn.discordapp.com/attachments/957656105092272208/1075104030721839196/images_1.png",
+    #         thumbnail_url="https://cdn.discordapp.com/attachments/957656105092272208/1075103690060476416/no-u-turn.jpg",
+    #         image_url="https://cdn.discordapp.com/attachments/957656105092272208/1075104193641205821/no-u-reverse-card.gif",
+    #         timestamp=False
+    #     )
+    #
+    #     await ctx.respond(embed=embed)
 
 ####################################################################################################
     @postings.command(

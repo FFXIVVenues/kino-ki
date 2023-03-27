@@ -17,7 +17,6 @@ load_dotenv()
 # Instantiate bot
 
 bot = KinoKi(
-    debug_guilds=[303742308874977280, 768923191073701909, 955933227372122173, 221377146638041108],
     intents=Intents.default()
 )
 
