@@ -12,7 +12,7 @@ from typing     import (
 
 __all__ = (
     "KinoView",
-    "CloseMessageView",
+    # "CloseMessageView",
     "ConfirmCancelView"
 )
 

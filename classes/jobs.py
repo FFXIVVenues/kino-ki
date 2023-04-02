@@ -276,8 +276,8 @@ class JobPostings:
             EmbedField("__Source Channel(s)__", self.list_sources(), True),
             EmbedField("__Post Channel(s)__", self.list_destinations(), True),
             SeparatorField(6),
-            EmbedField("__Posting Stats__", self.posting_stats(), False),
-            SeparatorField(6),
+            # EmbedField("__Posting Stats__", self.posting_stats(), False),
+            # SeparatorField(6),
         ]
 
         return make_embed(
@@ -332,10 +332,10 @@ class JobPostings:
             self.update(source_channel=channel)
 
         status = self.source_channel_status()
-        view = CloseMessageView(interaction.user)
+        # view = CloseMessageView(interaction.user)
 
-        await interaction.response.send_message(embed=status, view=view)
-        await view.wait()
+        await interaction.response.send_message(embed=status)#, view=view)
+        # await view.wait()
 
         return
 
@@ -348,10 +348,10 @@ class JobPostings:
             self.update(post_channel=channel)
 
         status = self.post_channel_status()
-        view = CloseMessageView(interaction.user)
+        # view = CloseMessageView(interaction.user)
 
-        await interaction.response.send_message(embed=status, view=view)
-        await view.wait()
+        await interaction.response.send_message(embed=status)#, view=view)
+        # await view.wait()
 
         return
 
@@ -362,10 +362,10 @@ class JobPostings:
             self.update(remove_channel=channel)
 
         status = self.source_channel_status()
-        view = CloseMessageView(interaction.user)
+        # view = CloseMessageView(interaction.user)
 
-        await interaction.response.send_message(embed=status, view=view)
-        await view.wait()
+        await interaction.response.send_message(embed=status)#, view=view)
+        # await view.wait()
 
         return
 
@@ -376,10 +376,10 @@ class JobPostings:
             self.update(remove_channel=channel)
 
         status = self.post_channel_status()
-        view = CloseMessageView(interaction.user)
+        # view = CloseMessageView(interaction.user)
 
-        await interaction.response.send_message(embed=status, view=view)
-        await view.wait()
+        await interaction.response.send_message(embed=status)#, view=view)
+        # await view.wait()
 
         return
 

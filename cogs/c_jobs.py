@@ -31,7 +31,7 @@ class JobListeners(Cog):
 ####################################################################################################
 
     postings = SlashCommandGroup(
-        name="jobs",
+        name="crossposting",
         description="Job Crossposting Commands"
     )
 
@@ -233,7 +233,7 @@ class JobListeners(Cog):
 
 ####################################################################################################
     @postings.command(
-        name="remove_map",
+        name="unmap_role",
         description="Remove a role/tag mapping for job crosspostings."
     )
     async def jobs_remove_map(
